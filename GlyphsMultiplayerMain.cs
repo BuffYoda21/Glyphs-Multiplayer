@@ -2,7 +2,6 @@ using UnityEngine;
 using MelonLoader;
 using Il2CppInterop.Runtime.Injection;
 using Il2CppSteamworks;
-using UnityEngine.Serialization;
 using System.Linq;
 using Il2Cpp;
 using System.Collections.Generic;

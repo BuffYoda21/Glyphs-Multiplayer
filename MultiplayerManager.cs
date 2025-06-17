@@ -4,11 +4,9 @@ using Il2CppSteamworks;
 using Il2Cpp;
 using System.Collections.Generic;
 using System;
-using System.Linq;
 using System.IO;
 using System.Text;
 using UnityEngine.SceneManagement;
-using System.Threading;
 
 namespace GlyphsMultiplayer
 {
