@@ -7,7 +7,7 @@ using Il2Cpp;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.2.1", "BuffYoda21")]
+[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.2.2", "BuffYoda21")]
 [assembly: MelonGame("Vortex Bros.", "GLYPHS")]
 
 namespace GlyphsMultiplayer {
@@ -47,7 +47,19 @@ namespace GlyphsMultiplayer {
             foreach (GameObject dummy in manager.dummies)
             {
                 if (dummy == null)
+                {
                     toRemove.Add(dummy);
+                }
+                else if (dummy.GetComponent<PlayerDummy>() == null)
+                {
+                    toRemove.Add(dummy);
+                }
+                else if (dummy.GetComponent<PlayerDummy>().lastPacketTime < Time.time - 30f)
+                {
+                    toRemove.Add(dummy);
+                    manager.connectedPlayers.Remove(dummy.GetComponent<PlayerDummy>().steamID);
+                    UnityEngine.Object.DestroyImmediate(dummy);
+                }
             }
             foreach (GameObject dummy in toRemove)
             {

@@ -17,6 +17,7 @@ namespace GlyphsMultiplayer
 
         public void Update()
         {
+            lastPacketTime = Time.time;
             scene = SceneManager.GetActiveScene().name;
             if (!dashAttackBlades)
             {
@@ -60,22 +61,22 @@ namespace GlyphsMultiplayer
                     }
                 }
                 if (currentHat != "")
+                {
+                    if (hat != currentHat)
                     {
-                        if (hat != currentHat)
+                        if (equippedHat != null)
                         {
-                            if (equippedHat != null)
-                            {
-                                Destroy(equippedHat);
-                            }
-                            equippedHat = Instantiate(Resources.Load<GameObject>("Prefabs/Game/Hats/" + sm.GetString("currentHat")), transform.position, Quaternion.identity);
-                            equippedHat.transform.position += new Vector3(0, .5f, 0);
-                            equippedHat.transform.parent = gameObject.transform;
+                            Destroy(equippedHat);
                         }
+                        equippedHat = Instantiate(Resources.Load<GameObject>("Prefabs/Game/Hats/" + sm.GetString("currentHat")), transform.position, Quaternion.identity);
+                        equippedHat.transform.position += new Vector3(0, .5f, 0);
+                        equippedHat.transform.parent = gameObject.transform;
                     }
-                    else if (currentHat == "" && equippedHat != null)
-                    {
-                        Destroy(equippedHat);
-                    }
+                }
+                else if (currentHat == "" && equippedHat != null)
+                {
+                    Destroy(equippedHat);
+                }
                 hat = currentHat;
             }
             if (SceneManager.GetActiveScene().name == scene)
@@ -110,6 +111,7 @@ namespace GlyphsMultiplayer
         public string hat;
         public GameObject equippedHat;
         public GameObject dashAttackBlades;
+        public float lastPacketTime;
 
         public BoxCollider2D collider;
         public SpriteRenderer sprite;
