@@ -20,31 +20,65 @@ namespace GlyphsMultiplayer
         public void Start()
         {
             sm = GameObject.Find("Manager intro").GetComponent<SaveManager>();
-            string path = Path.Combine(Application.dataPath, "ids.txt");
+
+            string userDataDir = Path.Combine(Environment.CurrentDirectory, "UserData");
+            string settingsPath = Path.Combine(userDataDir, "settings.json");
+
+            if (!Directory.Exists(userDataDir))
+                Directory.CreateDirectory(userDataDir);
+
+            // Default values
+            string defaultDisplayName = "George Appreciator";
+            bool defaultPvP = true;
+            bool defaultCollision = true;
+            List<ulong> defaultTargetIDs = new List<ulong>();
+
+            // If no settings.json found create it
+            if (!File.Exists(settingsPath))
+            {
+                var defaultObj = new
+                {
+                    displayName = defaultDisplayName,
+                    PvP = defaultPvP,
+                    collision = defaultCollision,
+                    playersToConnectTo = defaultTargetIDs
+                };
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(defaultObj, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(settingsPath, json);
+                MelonLogger.Msg($"Created default settings.json at {settingsPath}");
+            }
+
             try
             {
-                if (File.Exists(path))
+                string json = File.ReadAllText(settingsPath);
+                var root = Newtonsoft.Json.Linq.JObject.Parse(json);
+
+                displayName = root["displayName"] != null ? (string)root["displayName"] : defaultDisplayName;
+                PvP = root["PvP"] != null ? (bool)root["PvP"] : defaultPvP;
+                collision = root["collision"] != null ? (bool)root["collision"] : defaultCollision;
+
+                targetIDs.Clear();
+                if (root["playersToConnectTo"] != null && root["playersToConnectTo"].Type == Newtonsoft.Json.Linq.JTokenType.Array)
                 {
-                    string[] lines = File.ReadAllLines(path);
-                    foreach (var line in lines)
+                    foreach (var idElem in root["playersToConnectTo"])
                     {
-                        string trimmed = line.Trim();
-                        if (ulong.TryParse(trimmed, out ulong id))
-                        {
+                        if (ulong.TryParse(idElem.ToString(), out ulong id))
                             targetIDs.Add(id);
-                        }
                     }
-                    MelonLogger.Msg($"Loaded {targetIDs.Count} target SteamIDs from ids.txt.");
                 }
-                else
-                {
-                    MelonLogger.Error($"ids.txt not found at {path}");
-                }
+                MelonLogger.Msg($"Loaded settings.json from {settingsPath}");
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"Failed to read ids.txt: {ex.Message}");
+                MelonLogger.Error($"Failed to read settings.json: {ex.Message}");
+                // Fallback to defaults
+                displayName = defaultDisplayName;
+                PvP = defaultPvP;
+                collision = defaultCollision;
+                targetIDs = new List<ulong>();
             }
+
+            MelonLogger.Msg($"Display Name: {displayName}, PvP: {PvP}, Collision: {collision}, Players: {string.Join(", ", targetIDs)}");
         }
 
         public void Update()
@@ -111,7 +145,7 @@ namespace GlyphsMultiplayer
 
         public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, bool dashAttack, string currentHat)
         {
-            byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, dashAttack, currentHat);
+            byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, dashAttack, currentHat, displayName);
             foreach (var player in connectedPlayers)
             {
                 SteamNetworking.SendP2PPacket(player, packet, (uint)packet.Length, EP2PSend.k_EP2PSendUnreliable);
@@ -181,16 +215,17 @@ namespace GlyphsMultiplayer
                         Quaternion attack;
                         bool isDashAttack;
                         string currentHat;
-                        ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out isDashAttack, out currentHat);
+                        string dummyName;
+                        ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out isDashAttack, out currentHat, out dummyName);
                         GameObject dummy = GetPlayerDummy(senderId);
                         if (dummy != null)
-                            dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, isDashAttack, hat);
+                            dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, isDashAttack, hat, dummyName);
                     }
                 }
             }
         }
 
-        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, bool isDashAttack, string currentHat)
+        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, bool isDashAttack, string currentHat, string displayName)
         {
             using (var ms = new MemoryStream())
             using (var writer = new BinaryWriter(ms))
@@ -219,11 +254,15 @@ namespace GlyphsMultiplayer
                 writer.Write(hatBytes.Length);
                 writer.Write(hatBytes);
 
+                byte[] nameBytes = Encoding.UTF8.GetBytes(displayName);
+                writer.Write(nameBytes.Length);
+                writer.Write(nameBytes);
+
                 return ms.ToArray();
             }
         }
 
-        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out bool isDashAttack, out string currentHat)
+        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out bool isDashAttack, out string currentHat, out string dummyName)
         {
             using (var ms = new MemoryStream(data))
             using (var reader = new BinaryReader(ms))
@@ -260,6 +299,12 @@ namespace GlyphsMultiplayer
                     currentHat = Encoding.UTF8.GetString(reader.ReadBytes(hatLen));
                 else
                     currentHat = "";
+
+                int nameLen = reader.ReadInt32();
+                if (nameLen > 0)
+                    dummyName = Encoding.UTF8.GetString(reader.ReadBytes(nameLen));
+                else
+                    dummyName = "George Appreciator";
             }
         }
 
@@ -287,5 +332,8 @@ namespace GlyphsMultiplayer
         public bool isDashAttack = false;
         public string hat = "";
         public Quaternion attack = Quaternion.identity;
+        public string displayName = "";
+        public bool PvP = true;
+        public bool collision = true;
     }
 }

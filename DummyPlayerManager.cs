@@ -3,6 +3,7 @@ using MelonLoader;
 using UnityEngine.SceneManagement;
 using Il2CppSteamworks;
 using Il2Cpp;
+using UnityEngine.Serialization;
 
 namespace GlyphsMultiplayer
 {
@@ -13,24 +14,25 @@ namespace GlyphsMultiplayer
             collider = GetComponent<BoxCollider2D>();
             sprite = GetComponent<SpriteRenderer>();
             sm = GameObject.Find("Manager intro").GetComponent<SaveManager>();
+            manager = GameObject.Find("Multiplayer Manager").GetComponent<MultiplayerManager>();
         }
 
         public void Update()
         {
-            lastPacketTime = Time.time;
             scene = SceneManager.GetActiveScene().name;
             if (!dashAttackBlades)
             {
                 dashAttackBlades = transform.Find("DashAttackBlades").gameObject;
-                if (dashAttackBlades != null)
+                if (dashAttackBlades != null && manager.PvP)
                 {
                     dashAttackBlades.GetComponent<AttackBox>().attackType = "enemy";
                 }
             }
         }
 
-        public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, bool dashAttack, string currentHat)
+        public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, bool dashAttack, string currentHat, string displayName)
         {
+            lastPacketTime = Time.time;
             if (SceneManager.GetActiveScene().name != "Game" && SceneManager.GetActiveScene().name != "Memory" && SceneManager.GetActiveScene().name != "Outer Void")
                 return;
             if (!culled)
@@ -78,6 +80,20 @@ namespace GlyphsMultiplayer
                     Destroy(equippedHat);
                 }
                 hat = currentHat;
+                if (nametag == null)
+                {
+                    GameObject nametag = new GameObject("Nametag");
+                    nametag.transform.SetParent(transform);
+                    nametag.transform.localPosition = new Vector3(0, 1.5f, 0);
+
+                    var textMesh = nametag.AddComponent<TextMesh>();
+                    textMesh.text = manager.displayName;
+                    textMesh.fontSize = 32;
+                    textMesh.color = Color.white;
+                    //textMesh.color = new Color(255f, 0f, 163f, 255f);
+                    textMesh.alignment = TextAlignment.Center;
+                    textMesh.anchor = TextAnchor.MiddleCenter;
+                }
             }
             if (SceneManager.GetActiveScene().name == scene)
                 UncullSelf();
@@ -101,6 +117,7 @@ namespace GlyphsMultiplayer
         }
 
         public SaveManager sm;
+        public MultiplayerManager manager;
         private bool culled = true;
         public CSteamID steamID;
         public Vector3 pos;
@@ -111,7 +128,9 @@ namespace GlyphsMultiplayer
         public string hat;
         public GameObject equippedHat;
         public GameObject dashAttackBlades;
-        public float lastPacketTime;
+        public float lastPacketTime = 0f;
+        public GameObject nametag = null;
+        public string displayName = "George Appreciator";
 
         public BoxCollider2D collider;
         public SpriteRenderer sprite;

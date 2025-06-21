@@ -7,7 +7,7 @@ using Il2Cpp;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.2.2", "BuffYoda21")]
+[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.3.0", "BuffYoda21")]
 [assembly: MelonGame("Vortex Bros.", "GLYPHS")]
 
 namespace GlyphsMultiplayer {
@@ -40,6 +40,8 @@ namespace GlyphsMultiplayer {
                     manager.dummies.Last<GameObject>().AddComponent<PlayerDummy>();
                     manager.dummies.Last<GameObject>().GetComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(manager.dummies.Last<GameObject>().GetComponent<Rigidbody2D>());
+                    if (!manager.collision)
+                        UnityEngine.Object.DestroyImmediate(manager.dummies.Last<GameObject>().GetComponent<BoxCollider2D>());
                     manager.dummies.Last<GameObject>().layer = 3;
                 }
             }
@@ -74,11 +76,13 @@ namespace GlyphsMultiplayer {
                 });
                 if (!hasDummy)
                 {
-                    var dummy = UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform);
+                    GameObject dummy = UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform);
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<PlayerController>());
                     dummy.AddComponent<PlayerDummy>();
                     dummy.GetComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<Rigidbody2D>());
+                    if (!manager.collision)
+                        UnityEngine.Object.DestroyImmediate(dummy.GetComponent<BoxCollider2D>());
                     dummy.layer = 3;
                     manager.dummies.Add(dummy);
                 }
