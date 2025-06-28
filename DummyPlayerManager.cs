@@ -32,7 +32,6 @@ namespace GlyphsMultiplayer
 
         public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, bool dashAttack, string currentHat, string displayName)
         {
-            lastPacketTime = Time.time;
             if (SceneManager.GetActiveScene().name != "Game" && SceneManager.GetActiveScene().name != "Memory" && SceneManager.GetActiveScene().name != "Outer Void")
                 return;
             if (!culled)
@@ -82,17 +81,21 @@ namespace GlyphsMultiplayer
                 hat = currentHat;
                 if (nametag == null)
                 {
-                    GameObject nametag = new GameObject("Nametag");
+                    MelonLogger.Msg("Creating nametag for " + displayName);
+                    nametag = new GameObject("Nametag");
                     nametag.transform.SetParent(transform);
                     nametag.transform.localPosition = new Vector3(0, 1.5f, 0);
 
-                    var textMesh = nametag.AddComponent<TextMesh>();
-                    textMesh.text = manager.displayName;
-                    textMesh.fontSize = 32;
-                    textMesh.color = Color.white;
-                    //textMesh.color = new Color(255f, 0f, 163f, 255f);
-                    textMesh.alignment = TextAlignment.Center;
-                    textMesh.anchor = TextAnchor.MiddleCenter;
+                    BuildText bt = nametag.AddComponent<BuildText>();
+                    bt.text = displayName;
+                    if (bt.text == "")
+                        bt.text = "George Appreciator";
+                    bt.textsize = .25f;
+                    //bt.col = Color.white;
+                    bt.col = new Color(255f, 0f, 163f, 255f);
+                    bt.order = 999;
+                    bt.normaltext = true;
+                    bt.center = true;
                 }
             }
             if (SceneManager.GetActiveScene().name == scene)
@@ -128,7 +131,6 @@ namespace GlyphsMultiplayer
         public string hat;
         public GameObject equippedHat;
         public GameObject dashAttackBlades;
-        public float lastPacketTime = 0f;
         public GameObject nametag = null;
         public string displayName = "George Appreciator";
 

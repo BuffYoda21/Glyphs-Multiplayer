@@ -190,7 +190,7 @@ namespace GlyphsMultiplayer
                         recvBuffer[i] = buffer[i];
 
                     string message = System.Text.Encoding.UTF8.GetString(recvBuffer, 0, (int)bytesRead);
-                    //MelonLogger.Msg($"{remoteId}: {message}");
+                    //MelonLogger.Msg($"{remoteId}: {message}");        //for debug use only
                     if (message.StartsWith("Connected to "))
                     {
                         if (!connectedPlayers.Contains(remoteId))
@@ -208,18 +208,25 @@ namespace GlyphsMultiplayer
                     }
                     else
                     {
-                        ulong senderId;
-                        Vector3 pos;
-                        string scene;
-                        bool isAttack;
-                        Quaternion attack;
-                        bool isDashAttack;
-                        string currentHat;
-                        string dummyName;
-                        ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out isDashAttack, out currentHat, out dummyName);
-                        GameObject dummy = GetPlayerDummy(senderId);
-                        if (dummy != null)
-                            dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, isDashAttack, hat, dummyName);
+                        try
+                        {
+                            ulong senderId;
+                            Vector3 pos;
+                            string scene;
+                            bool isAttack;
+                            Quaternion attack;
+                            bool isDashAttack;
+                            string currentHat;
+                            string dummyName;
+                            ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out isDashAttack, out currentHat, out dummyName);
+                            GameObject dummy = GetPlayerDummy(senderId);
+                            if (dummy != null)
+                                dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, isDashAttack, currentHat, dummyName);
+                        }
+                        catch (Exception ex)
+                        {
+                            MelonLogger.Error($"Failed to parse player update packet: {ex.Message}");
+                        }
                     }
                 }
             }

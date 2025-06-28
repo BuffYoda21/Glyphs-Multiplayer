@@ -7,7 +7,7 @@ using Il2Cpp;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.3.0", "BuffYoda21")]
+[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.3.1", "BuffYoda21")]
 [assembly: MelonGame("Vortex Bros.", "GLYPHS")]
 
 namespace GlyphsMultiplayer {
@@ -40,8 +40,6 @@ namespace GlyphsMultiplayer {
                     manager.dummies.Last<GameObject>().AddComponent<PlayerDummy>();
                     manager.dummies.Last<GameObject>().GetComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(manager.dummies.Last<GameObject>().GetComponent<Rigidbody2D>());
-                    if (!manager.collision)
-                        UnityEngine.Object.DestroyImmediate(manager.dummies.Last<GameObject>().GetComponent<BoxCollider2D>());
                     manager.dummies.Last<GameObject>().layer = 3;
                 }
             }
@@ -49,19 +47,7 @@ namespace GlyphsMultiplayer {
             foreach (GameObject dummy in manager.dummies)
             {
                 if (dummy == null)
-                {
                     toRemove.Add(dummy);
-                }
-                else if (dummy.GetComponent<PlayerDummy>() == null)
-                {
-                    toRemove.Add(dummy);
-                }
-                else if (dummy.GetComponent<PlayerDummy>().lastPacketTime < Time.time - 30f)
-                {
-                    toRemove.Add(dummy);
-                    manager.connectedPlayers.Remove(dummy.GetComponent<PlayerDummy>().steamID);
-                    UnityEngine.Object.DestroyImmediate(dummy);
-                }
             }
             foreach (GameObject dummy in toRemove)
             {
@@ -76,13 +62,11 @@ namespace GlyphsMultiplayer {
                 });
                 if (!hasDummy)
                 {
-                    GameObject dummy = UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform);
+                    var dummy = UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform);
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<PlayerController>());
                     dummy.AddComponent<PlayerDummy>();
                     dummy.GetComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<Rigidbody2D>());
-                    if (!manager.collision)
-                        UnityEngine.Object.DestroyImmediate(dummy.GetComponent<BoxCollider2D>());
                     dummy.layer = 3;
                     manager.dummies.Add(dummy);
                 }
