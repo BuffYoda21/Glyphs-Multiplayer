@@ -31,6 +31,7 @@ namespace GlyphsMultiplayer
             string defaultDisplayName = "George Appreciator";
             bool defaultPvP = true;
             bool defaultCollision = true;
+            bool defaultMapPins = false;
             List<ulong> defaultTargetIDs = new List<ulong>();
 
             // If no settings.json found create it
@@ -41,6 +42,7 @@ namespace GlyphsMultiplayer
                     displayName = defaultDisplayName,
                     PvP = defaultPvP,
                     collision = defaultCollision,
+                    hidePlayerMapPins = defaultMapPins,
                     playersToConnectTo = defaultTargetIDs
                 };
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(defaultObj, Newtonsoft.Json.Formatting.Indented);
@@ -56,6 +58,7 @@ namespace GlyphsMultiplayer
                 displayName = root["displayName"] != null ? (string)root["displayName"] : defaultDisplayName;
                 PvP = root["PvP"] != null ? (bool)root["PvP"] : defaultPvP;
                 collision = root["collision"] != null ? (bool)root["collision"] : defaultCollision;
+                hidePlayerMapPins = root["hidePlayerMapPins"] != null ? (bool)root["hidePlayerMapPins"] : defaultMapPins;
 
                 targetIDs.Clear();
                 if (root["playersToConnectTo"] != null && root["playersToConnectTo"].Type == Newtonsoft.Json.Linq.JTokenType.Array)
@@ -75,10 +78,11 @@ namespace GlyphsMultiplayer
                 displayName = defaultDisplayName;
                 PvP = defaultPvP;
                 collision = defaultCollision;
+                hidePlayerMapPins = defaultMapPins;
                 targetIDs = new List<ulong>();
             }
 
-            MelonLogger.Msg($"Display Name: {displayName}, PvP: {PvP}, Collision: {collision}, Players: {string.Join(", ", targetIDs)}");
+            MelonLogger.Msg($"Display Name: {displayName}, PvP: {PvP}, Collision: {collision}, Map Pins: {hidePlayerMapPins}, Players: {string.Join(", ", targetIDs)}");
         }
 
         public void Update()
@@ -342,5 +346,6 @@ namespace GlyphsMultiplayer
         public string displayName = "";
         public bool PvP = true;
         public bool collision = true;
+        public bool hidePlayerMapPins = false;
     }
 }
