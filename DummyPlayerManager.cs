@@ -3,7 +3,6 @@ using MelonLoader;
 using UnityEngine.SceneManagement;
 using Il2CppSteamworks;
 using Il2Cpp;
-using UnityEngine.Serialization;
 
 namespace GlyphsMultiplayer
 {
