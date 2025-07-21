@@ -143,13 +143,13 @@ namespace GlyphsMultiplayer
                 }
                 isDashAttack = player.transform.Find("DashAttackBlades").gameObject.activeSelf;
                 hat = sm.GetString("currentHat");
-                BroadcastPlayerUpdate(myPos, myScene, isAttacking, attack, isDashAttack, hat);
+                BroadcastPlayerUpdate(myPos, myScene, isAttacking, attack, (byte)player.GetComponent<PlayerController>().attackBonus, isDashAttack, hat);
             }
         }
 
-        public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, bool dashAttack, string currentHat)
+        public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat)
         {
-            byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, dashAttack, currentHat, displayName);
+            byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, atkBns, dashAttack, currentHat, displayName);
             foreach (var player in connectedPlayers)
             {
                 SteamNetworking.SendP2PPacket(player, packet, (uint)packet.Length, EP2PSend.k_EP2PSendUnreliable);
@@ -221,13 +221,14 @@ namespace GlyphsMultiplayer
                             string scene;
                             bool isAttack;
                             Quaternion attack;
+                            int atkBns;
                             bool isDashAttack;
                             string currentHat;
                             string dummyName;
-                            ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out isDashAttack, out currentHat, out dummyName);
+                            ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out atkBns, out isDashAttack, out currentHat, out dummyName);
                             GameObject dummy = GetPlayerDummy(senderId);
                             if (dummy != null)
-                                dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, isDashAttack, currentHat, dummyName);
+                                dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, atkBns, isDashAttack, currentHat, dummyName);
                         }
                         catch (Exception ex)
                         {
@@ -238,7 +239,7 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, bool isDashAttack, string currentHat, string displayName)
+        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool isDashAttack, string currentHat, string displayName)
         {
             using (var ms = new MemoryStream())
             using (var writer = new BinaryWriter(ms))
@@ -261,6 +262,8 @@ namespace GlyphsMultiplayer
                     writer.Write(attack.w);
                 }
 
+                writer.Write(atkBns);
+
                 writer.Write(isDashAttack);
 
                 byte[] hatBytes = Encoding.UTF8.GetBytes(currentHat);
@@ -275,7 +278,7 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out bool isDashAttack, out string currentHat, out string dummyName)
+        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out int atkBns, out bool isDashAttack, out string currentHat, out string dummyName)
         {
             using (var ms = new MemoryStream(data))
             using (var reader = new BinaryReader(ms))
@@ -304,6 +307,8 @@ namespace GlyphsMultiplayer
                 {
                     attack = Quaternion.identity;
                 }
+
+                atkBns = reader.ReadByte();
 
                 isDashAttack = reader.ReadBoolean();
 

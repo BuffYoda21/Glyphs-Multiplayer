@@ -29,7 +29,7 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, bool dashAttack, string currentHat, string displayName)
+        public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat, string displayName)
         {
             if (SceneManager.GetActiveScene().name != "Game" && SceneManager.GetActiveScene().name != "Memory" && SceneManager.GetActiveScene().name != "Outer Void")
                 return;
@@ -39,12 +39,13 @@ namespace GlyphsMultiplayer
                 scene = newScene;
                 isAttacking = isAttack;
                 attackRotation = attack;
+                attackPwr = 14 + atkBns;
                 isDashAttack = dashAttack;
                 transform.position = pos;
                 if (isAttacking)
                 {
                     GameObject attackSlash = Instantiate(Resources.Load<GameObject>("Prefabs/Game/attackArc"), transform.position, Quaternion.identity);
-                    attackSlash.GetComponentInChildren<AttackBox>().damage = 14;
+                    attackSlash.GetComponentInChildren<AttackBox>().damage = attackPwr;
                     attackSlash.GetComponentInChildren<AttackBox>().attackType = "enemy";
                     attackSlash.transform.parent = transform;
                     attackSlash.transform.rotation = attack;
@@ -118,6 +119,7 @@ namespace GlyphsMultiplayer
             culled = false;
         }
 
+        public int attackPwr;
         public SaveManager sm;
         public MultiplayerManager manager;
         private bool culled = true;
