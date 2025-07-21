@@ -161,10 +161,12 @@ namespace GlyphsMultiplayer
             CSteamID targetId = new CSteamID(targetSteamId);
             byte[] data = System.Text.Encoding.UTF8.GetBytes($"Connected to {steamID}");
             outgoing = SteamNetworking.SendP2PPacket(targetId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
+            /*
             if (outgoing)
                 MelonLogger.Msg($"Sent connection attempt to {targetId}.");
             else
                 MelonLogger.Error($"Failed to send packet to {targetId}.");
+            */
         }
 
         private void OnP2PSessionRequest(P2PSessionRequest_t request)
