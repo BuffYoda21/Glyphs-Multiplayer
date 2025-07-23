@@ -7,7 +7,7 @@ using Il2Cpp;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.4.0", "BuffYoda21")]
+[assembly: MelonInfo(typeof(GlyphsMultiplayer.Main), "Glyphs Multiplayer", "1.4.1", "BuffYoda21")]
 [assembly: MelonGame("Vortex Bros.", "GLYPHS")]
 
 namespace GlyphsMultiplayer
@@ -68,9 +68,9 @@ namespace GlyphsMultiplayer
                 {
                     GameObject dummy = UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform);
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<PlayerController>());
-                    dummy.AddComponent<PlayerDummy>();
-                    dummy.GetComponent<PlayerDummy>().steamID = id;
+                    dummy.AddComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<Rigidbody2D>());
+                    dummy.AddComponent<SlidingPlatform>().speed = 0;    //just for the parenting mechanic that will allow dummies to be pushed and riden
                     dummy.layer = 3;
                     if (manager.hidePlayerMapPins)
                         dummy.transform.Find("PlayerMapPin").gameObject.SetActive(false);
