@@ -39,8 +39,7 @@ namespace GlyphsMultiplayer
                     manager.dummies.Add(UnityEngine.Object.Instantiate(GameObject.Find("Player"), dummyParent.transform));
                     GameObject dummy = manager.dummies.Last<GameObject>();
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<PlayerController>());
-                    dummy.AddComponent<PlayerDummy>();
-                    dummy.GetComponent<PlayerDummy>().steamID = id;
+                    dummy.AddComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<Rigidbody2D>());
                     dummy.layer = 3;
                     if (manager.hidePlayerMapPins)
@@ -70,7 +69,6 @@ namespace GlyphsMultiplayer
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<PlayerController>());
                     dummy.AddComponent<PlayerDummy>().steamID = id;
                     UnityEngine.Object.DestroyImmediate(dummy.GetComponent<Rigidbody2D>());
-                    dummy.AddComponent<SlidingPlatform>().speed = 0;    //just for the parenting mechanic that will allow dummies to be pushed and riden
                     dummy.layer = 3;
                     if (manager.hidePlayerMapPins)
                         dummy.transform.Find("PlayerMapPin").gameObject.SetActive(false);

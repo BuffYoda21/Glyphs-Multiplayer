@@ -119,6 +119,7 @@ namespace GlyphsMultiplayer
             culled = false;
         }
 
+        public GameObject contactBox;
         public int attackPwr;
         public SaveManager sm;
         public MultiplayerManager manager;

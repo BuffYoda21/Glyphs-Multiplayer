@@ -308,7 +308,7 @@ namespace GlyphsMultiplayer
                     attack = Quaternion.identity;
                 }
 
-                atkBns = reader.ReadByte();
+                atkBns = (int)reader.ReadSingle();
 
                 isDashAttack = reader.ReadBoolean();
 
