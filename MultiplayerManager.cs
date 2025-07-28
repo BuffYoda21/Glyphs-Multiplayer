@@ -159,7 +159,7 @@ namespace GlyphsMultiplayer
         public void ConnectToPlayer(ulong targetSteamId)
         {
             CSteamID targetId = new CSteamID(targetSteamId);
-            byte[] data = System.Text.Encoding.UTF8.GetBytes($"Connected to {steamID}");
+            byte[] data = System.Text.Encoding.UTF8.GetBytes($"Client v1.5 Connected to {steamID}");
             outgoing = SteamNetworking.SendP2PPacket(targetId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
             /*
             if (outgoing)
@@ -197,17 +197,17 @@ namespace GlyphsMultiplayer
 
                     string message = System.Text.Encoding.UTF8.GetString(recvBuffer, 0, (int)bytesRead);
                     //MelonLogger.Msg($"{remoteId}: {message}");        //for debug use only
-                    if (message.StartsWith("Connected to "))
+                    if (message.StartsWith("Client v1.5 Connected to "))
                     {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
 
                         if (remoteId.m_SteamID != steamID.m_SteamID)
                         {
-                            SendPacket((ulong)remoteId.m_SteamID, $"Connection confirmed with {steamID}");
+                            SendPacket((ulong)remoteId.m_SteamID, $"Client v1.5 Connection confirmed with {steamID}");
                         }
                     }
-                    else if (message.StartsWith("Connection confirmed with "))
+                    else if (message.StartsWith("Client v1.5 Connection confirmed with "))
                     {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
