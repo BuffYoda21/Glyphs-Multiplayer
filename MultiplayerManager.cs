@@ -8,17 +8,13 @@ using System.IO;
 using System.Text;
 using UnityEngine.SceneManagement;
 
-namespace GlyphsMultiplayer
-{
-    public class MultiplayerManager : MonoBehaviour
-    {
-        public void Awake()
-        {
+namespace GlyphsMultiplayer {
+    public class MultiplayerManager : MonoBehaviour {
+        public void Awake() {
             sessionRequestCallback = Callback<P2PSessionRequest_t>.Create((Callback<P2PSessionRequest_t>.DispatchDelegate)OnP2PSessionRequest);
         }
 
-        public void Start()
-        {
+        public void Start() {
             sm = GameObject.Find("Manager intro").GetComponent<SaveManager>();
 
             string userDataDir = Path.Combine(Environment.CurrentDirectory, "UserData");
@@ -35,10 +31,8 @@ namespace GlyphsMultiplayer
             List<ulong> defaultTargetIDs = new List<ulong>();
 
             // If no settings.json found create it
-            if (!File.Exists(settingsPath))
-            {
-                var defaultObj = new
-                {
+            if (!File.Exists(settingsPath)) {
+                var defaultObj = new {
                     displayName = defaultDisplayName,
                     PvP = defaultPvP,
                     collision = defaultCollision,
@@ -50,8 +44,7 @@ namespace GlyphsMultiplayer
                 MelonLogger.Msg($"Created default settings.json at {settingsPath}");
             }
 
-            try
-            {
+            try {
                 string json = File.ReadAllText(settingsPath);
                 var root = Newtonsoft.Json.Linq.JObject.Parse(json);
 
@@ -61,18 +54,14 @@ namespace GlyphsMultiplayer
                 hidePlayerMapPins = root["hidePlayerMapPins"] != null ? (bool)root["hidePlayerMapPins"] : defaultMapPins;
 
                 targetIDs.Clear();
-                if (root["playersToConnectTo"] != null && root["playersToConnectTo"].Type == Newtonsoft.Json.Linq.JTokenType.Array)
-                {
-                    foreach (var idElem in root["playersToConnectTo"])
-                    {
+                if (root["playersToConnectTo"] != null && root["playersToConnectTo"].Type == Newtonsoft.Json.Linq.JTokenType.Array) {
+                    foreach (var idElem in root["playersToConnectTo"]) {
                         if (ulong.TryParse(idElem.ToString(), out ulong id))
                             targetIDs.Add(id);
                     }
                 }
                 MelonLogger.Msg($"Loaded settings.json from {settingsPath}");
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 MelonLogger.Error($"Failed to read settings.json: {ex.Message}");
                 // Fallback to defaults
                 displayName = defaultDisplayName;
@@ -85,60 +74,43 @@ namespace GlyphsMultiplayer
             MelonLogger.Msg($"Display Name: {displayName}, PvP: {PvP}, Collision: {collision}, Map Pins: {hidePlayerMapPins}, Players: {string.Join(", ", targetIDs)}");
         }
 
-        public void Update()
-        {
-            if (player == null && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void"))
-            {
+        public void Update() {
+            if (player == null && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void")) {
                 player = GameObject.Find("Player");
                 if (player == null)
                     return;
             }
-            if (!steamInitialized && SteamManager.Initialized)
-            {
+            if (!steamInitialized && SteamManager.Initialized) {
                 steamID = SteamUser.GetSteamID();
                 MelonLogger.Msg($"Your Steam ID: {steamID}");
                 steamInitialized = true;
-            }
-            else if (steamInitialized)
-            {
-                foreach (var targetID in targetIDs)
-                {
-                    if (!connectedPlayers.Contains(new CSteamID(targetID)))
-                    {
-                        if (packetDelay <= 0)
-                        {
+            } else if (steamInitialized) {
+                foreach (var targetID in targetIDs) {
+                    if (!connectedPlayers.Contains(new CSteamID(targetID))) {
+                        if (packetDelay <= 0) {
                             ConnectToPlayer(targetID);
                             packetDelay = 10;
-                        }
-                        else
-                        {
+                        } else {
                             packetDelay--;
                         }
                     }
                 }
             }
             CheckForPackets();
-            if (steamInitialized && connectedPlayers.Count > 0)
-            {
+            if (steamInitialized && connectedPlayers.Count > 0) {
                 KeyBindManager km = FindFirstObjectByType<KeyBindManager>();
                 Vector3 myPos = player.transform.position;
                 string myScene = SceneManager.GetActiveScene().name;
                 Quaternion attack = Quaternion.identity;
                 GameObject attackArc = GameObject.Find("Player/attackArc(Clone)");
-                if (km)
-                {
-                    if (km.InputGetKeyDown("attack"))
-                    {
+                if (km) {
+                    if (km.InputGetKeyDown("attack")) {
                         isAttacking = true;
                         attack = attackArc.transform.localRotation;
-                    }
-                    else
-                    {
+                    } else {
                         isAttacking = false;
                     }
-                }
-                else
-                {
+                } else {
                     isAttacking = false;
                 }
                 isDashAttack = player.transform.Find("DashAttackBlades").gameObject.activeSelf;
@@ -147,17 +119,14 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat)
-        {
+        public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat) {
             byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, atkBns, dashAttack, currentHat, displayName);
-            foreach (var player in connectedPlayers)
-            {
+            foreach (var player in connectedPlayers) {
                 SteamNetworking.SendP2PPacket(player, packet, (uint)packet.Length, EP2PSend.k_EP2PSendUnreliable);
             }
         }
 
-        public void ConnectToPlayer(ulong targetSteamId)
-        {
+        public void ConnectToPlayer(ulong targetSteamId) {
             CSteamID targetId = new CSteamID(targetSteamId);
             byte[] data = System.Text.Encoding.UTF8.GetBytes($"Client v1.5 Connected to {steamID}");
             outgoing = SteamNetworking.SendP2PPacket(targetId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
@@ -169,53 +138,41 @@ namespace GlyphsMultiplayer
             */
         }
 
-        private void OnP2PSessionRequest(P2PSessionRequest_t request)
-        {
+        private void OnP2PSessionRequest(P2PSessionRequest_t request) {
             SteamNetworking.AcceptP2PSessionWithUser(request.m_steamIDRemote);
             MelonLogger.Msg($"Accepted P2P session with {request.m_steamIDRemote}");
         }
 
-        public bool SendPacket(ulong recipiant, String msg)
-        {
+        public bool SendPacket(ulong recipiant, String msg) {
             byte[] data = System.Text.Encoding.UTF8.GetBytes(msg);
             return SteamNetworking.SendP2PPacket(new CSteamID(recipiant), data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
         }
 
-        public void CheckForPackets()
-        {
+        public void CheckForPackets() {
             uint msgSize;
-            if (SteamNetworking.IsP2PPacketAvailable(out msgSize))
-            {
+            if (SteamNetworking.IsP2PPacketAvailable(out msgSize)) {
                 var buffer = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<byte>((long)msgSize);
                 CSteamID remoteId;
                 uint bytesRead;
-                while (SteamNetworking.ReadP2PPacket(buffer, msgSize, out bytesRead, out remoteId))
-                {
+                while (SteamNetworking.ReadP2PPacket(buffer, msgSize, out bytesRead, out remoteId)) {
                     byte[] recvBuffer = new byte[bytesRead];
                     for (int i = 0; i < bytesRead; i++)
                         recvBuffer[i] = buffer[i];
 
                     string message = System.Text.Encoding.UTF8.GetString(recvBuffer, 0, (int)bytesRead);
                     //MelonLogger.Msg($"{remoteId}: {message}");        //for debug use only
-                    if (message.StartsWith("Client v1.5 Connected to "))
-                    {
+                    if (message.StartsWith("Client v1.5 Connected to ")) {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
 
-                        if (remoteId.m_SteamID != steamID.m_SteamID)
-                        {
+                        if (remoteId.m_SteamID != steamID.m_SteamID) {
                             SendPacket((ulong)remoteId.m_SteamID, $"Client v1.5 Connection confirmed with {steamID}");
                         }
-                    }
-                    else if (message.StartsWith("Client v1.5 Connection confirmed with "))
-                    {
+                    } else if (message.StartsWith("Client v1.5 Connection confirmed with ")) {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
-                    }
-                    else
-                    {
-                        try
-                        {
+                    } else {
+                        try {
                             ulong senderId;
                             Vector3 pos;
                             string scene;
@@ -229,9 +186,7 @@ namespace GlyphsMultiplayer
                             GameObject dummy = GetPlayerDummy(senderId);
                             if (dummy != null)
                                 dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, atkBns, isDashAttack, currentHat, dummyName);
-                        }
-                        catch (Exception ex)
-                        {
+                        } catch (Exception ex) {
                             MelonLogger.Error($"Failed to parse player update packet: {ex.Message}");
                         }
                     }
@@ -239,11 +194,9 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool isDashAttack, string currentHat, string displayName)
-        {
+        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool isDashAttack, string currentHat, string displayName) {
             using (var ms = new MemoryStream())
-            using (var writer = new BinaryWriter(ms))
-            {
+            using (var writer = new BinaryWriter(ms)) {
                 writer.Write(senderId.m_SteamID);
                 writer.Write(position.x);
                 writer.Write(position.y);
@@ -254,8 +207,7 @@ namespace GlyphsMultiplayer
                 writer.Write(sceneBytes);
 
                 writer.Write(isAttack);
-                if (isAttack)
-                {
+                if (isAttack) {
                     writer.Write(attack.x);
                     writer.Write(attack.y);
                     writer.Write(attack.z);
@@ -278,11 +230,9 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out int atkBns, out bool isDashAttack, out string currentHat, out string dummyName)
-        {
+        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out int atkBns, out bool isDashAttack, out string currentHat, out string dummyName) {
             using (var ms = new MemoryStream(data))
-            using (var reader = new BinaryReader(ms))
-            {
+            using (var reader = new BinaryReader(ms)) {
                 senderSteamId = reader.ReadUInt64();
 
                 float x = reader.ReadSingle();
@@ -295,16 +245,13 @@ namespace GlyphsMultiplayer
                 sceneName = scene;
 
                 isAttack = reader.ReadBoolean();
-                if (isAttack)
-                {
+                if (isAttack) {
                     float ax = reader.ReadSingle();
                     float ay = reader.ReadSingle();
                     float az = reader.ReadSingle();
                     float aw = reader.ReadSingle();
                     attack = new Quaternion(ax, ay, az, aw);
-                }
-                else
-                {
+                } else {
                     attack = Quaternion.identity;
                 }
 
@@ -326,10 +273,8 @@ namespace GlyphsMultiplayer
             }
         }
 
-        public GameObject GetPlayerDummy(ulong id)
-        {
-            foreach (GameObject dummy in dummies)
-            {
+        public GameObject GetPlayerDummy(ulong id) {
+            foreach (GameObject dummy in dummies) {
                 if (dummy.GetComponent<PlayerDummy>().steamID == new CSteamID(id))
                     return dummy;
             }
