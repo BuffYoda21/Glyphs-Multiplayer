@@ -1,6 +1,6 @@
 # Glyphs Multiplayer
 
-This is the official Glyphs Multiplayer mod. It allows you to play with friends in real time in the ordinarily, single player world of Glyphs. This mod currently only supports Glyphs 1.7.0 and newer. It also requires you to have a connection to Steam.
+This is the official Glyphs Multiplayer mod. It allows you to play with friends in real time in the ordinarily, single player world of Glyphs. This mod only supports Glyphs running through the Steam client with an internet connection.
 
 ### Features
 * Real time position updates
