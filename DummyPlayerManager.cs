@@ -23,31 +23,12 @@ namespace GlyphsMultiplayer {
             }
         }
 
-        public void UpdatePlayer(Vector3 newPos, string newScene, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat, string displayName) {
+        public void UpdatePlayer(Vector3 newPos, string currentHat, string newScene, string displayName) {
             if (SceneManager.GetActiveScene().name != "Game" && SceneManager.GetActiveScene().name != "Memory" && SceneManager.GetActiveScene().name != "Outer Void")
                 return;
             if (!culled) {
                 pos = newPos;
-                scene = newScene;
-                isAttacking = isAttack;
-                attackRotation = attack;
-                attackPwr = 14 + atkBns;
-                isDashAttack = dashAttack;
                 transform.position = pos;
-                if (isAttacking) {
-                    GameObject attackSlash = Instantiate(Resources.Load<GameObject>("Prefabs/Game/attackArc"), transform.position, Quaternion.identity);
-                    attackSlash.GetComponentInChildren<AttackBox>().damage = attackPwr;
-                    attackSlash.GetComponentInChildren<AttackBox>().attackType = "enemy";
-                    attackSlash.transform.parent = transform;
-                    attackSlash.transform.rotation = attack;
-                }
-                if (dashAttackBlades != null) {
-                    if (isDashAttack) {
-                        dashAttackBlades.SetActive(true);
-                    } else {
-                        dashAttackBlades.SetActive(false);
-                    }
-                }
                 if (currentHat != "") {
                     if (hat != currentHat) {
                         if (equippedHat != null) {
@@ -85,6 +66,32 @@ namespace GlyphsMultiplayer {
                 CullSelf();
         }
 
+        public void UpdatePlayer(bool isAttack, Quaternion attack, float atkBns, bool dashAttack) {
+            if (SceneManager.GetActiveScene().name != "Game" && SceneManager.GetActiveScene().name != "Memory" && SceneManager.GetActiveScene().name != "Outer Void")
+                return;
+            if (!culled) {
+                isAttacking = isAttack;
+                attackRotation = attack;
+                attackPwr = 14 + atkBns;
+                isDashAttack = dashAttack;
+                transform.position = pos;
+                if (isAttacking) {
+                    GameObject attackSlash = Instantiate(Resources.Load<GameObject>("Prefabs/Game/attackArc"), transform.position, Quaternion.identity);
+                    attackSlash.GetComponentInChildren<AttackBox>().damage = (int)attackPwr;
+                    attackSlash.GetComponentInChildren<AttackBox>().attackType = "enemy";
+                    attackSlash.transform.parent = transform;
+                    attackSlash.transform.rotation = attack;
+                }
+                if (dashAttackBlades != null) {
+                    if (isDashAttack) {
+                        dashAttackBlades.SetActive(true);
+                    } else {
+                        dashAttackBlades.SetActive(false);
+                    }
+                }
+            }
+        }
+
         public void CullSelf() {
             sprite.enabled = false;
             collider.enabled = false;
@@ -99,7 +106,7 @@ namespace GlyphsMultiplayer {
         }
 
         public GameObject contactBox;
-        public int attackPwr;
+        public float attackPwr;
         public SaveManager sm;
         public MultiplayerManager manager;
         private bool culled = true;
