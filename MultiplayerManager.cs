@@ -75,32 +75,24 @@ namespace GlyphsMultiplayer {
         }
 
         public void Update() {
-            if (player == null && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void")) {
+            if (!player && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void"))
                 player = GameObject.Find("Player");
-                if (player == null)
-                    return;
-            }
             if (!steamInitialized && SteamManager.Initialized) {
                 steamID = SteamUser.GetSteamID();
                 MelonLogger.Msg($"Your Steam ID: {steamID}");
                 steamInitialized = true;
             } else if (steamInitialized) {
-                foreach (var targetID in targetIDs) {
-                    if (!connectedPlayers.Contains(new CSteamID(targetID))) {
-                        if (packetDelay <= 0) {
+                if (Time.time - lastRequestTime > 1f) {
+                    foreach (var targetID in targetIDs) {
+                        if (!connectedPlayers.Contains(new CSteamID(targetID)))
                             ConnectToPlayer(targetID);
-                            packetDelay = 10;
-                        } else {
-                            packetDelay--;
-                        }
                     }
+                    lastRequestTime = Time.time;
                 }
             }
             CheckForPackets();
             if (steamInitialized && connectedPlayers.Count > 0) {
                 KeyBindManager km = FindFirstObjectByType<KeyBindManager>();
-                Vector3 myPos = player.transform.position;
-                string myScene = SceneManager.GetActiveScene().name;
                 Quaternion attack = Quaternion.identity;
                 GameObject attackArc = GameObject.Find("Player/attackArc(Clone)");
                 if (km) {
@@ -115,37 +107,34 @@ namespace GlyphsMultiplayer {
                 }
                 isDashAttack = player.transform.Find("DashAttackBlades").gameObject.activeSelf;
                 hat = sm.GetString("currentHat");
-                BroadcastPlayerUpdate(myPos, myScene, isAttacking, attack, (byte)player.GetComponent<PlayerController>().attackBonus, isDashAttack, hat);
+                BroadcastUnreliable(CreateLowPriorityPacket(steamID, player.transform.position, SceneManager.GetActiveScene().name, hat, displayName));
+                if (isAttacking || isDashAttack)
+                    BroadcastReliable(CreateHighPriorityPacket(steamID, isAttacking, attack, player.GetComponent<PlayerController>().attackBonus, isDashAttack));
             }
         }
 
-        public void BroadcastPlayerUpdate(Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool dashAttack, string currentHat) {
-            byte[] packet = CreatePlayerUpdatePacket(steamID, position, sceneName, isAttack, attack, atkBns, dashAttack, currentHat, displayName);
+        public void BroadcastUnreliable(byte[] packet) {
             foreach (var player in connectedPlayers) {
                 SteamNetworking.SendP2PPacket(player, packet, (uint)packet.Length, EP2PSend.k_EP2PSendUnreliable);
             }
         }
 
-        public void ConnectToPlayer(ulong targetSteamId) {
-            CSteamID targetId = new CSteamID(targetSteamId);
-            byte[] data = System.Text.Encoding.UTF8.GetBytes($"Client v1.5 Connected to {steamID}");
-            outgoing = SteamNetworking.SendP2PPacket(targetId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
-            /*
-            if (outgoing)
-                MelonLogger.Msg($"Sent connection attempt to {targetId}.");
-            else
-                MelonLogger.Error($"Failed to send packet to {targetId}.");
-            */
+        public void BroadcastReliable(byte[] packet) {
+            foreach (var player in connectedPlayers) {
+                SteamNetworking.SendP2PPacket(player, packet, (uint)packet.Length, EP2PSend.k_EP2PSendReliable);
+            }
         }
 
+        public void ConnectToPlayer(ulong targetSteamId) {
+            CSteamID targetId = new CSteamID(targetSteamId);
+            byte[] data = System.Text.Encoding.UTF8.GetBytes($"Client v1.6 Connected to {steamID}");
+            SteamNetworking.SendP2PPacket(targetId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
+        }
+
+        // Always accept the session with remote player without checks so that it can send a response wether or not to continue communication.
         private void OnP2PSessionRequest(P2PSessionRequest_t request) {
             SteamNetworking.AcceptP2PSessionWithUser(request.m_steamIDRemote);
             MelonLogger.Msg($"Accepted P2P session with {request.m_steamIDRemote}");
-        }
-
-        public bool SendPacket(ulong recipiant, String msg) {
-            byte[] data = System.Text.Encoding.UTF8.GetBytes(msg);
-            return SteamNetworking.SendP2PPacket(new CSteamID(recipiant), data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
         }
 
         public void CheckForPackets() {
@@ -161,31 +150,36 @@ namespace GlyphsMultiplayer {
 
                     string message = System.Text.Encoding.UTF8.GetString(recvBuffer, 0, (int)bytesRead);
                     //MelonLogger.Msg($"{remoteId}: {message}");        //for debug use only
-                    if (message.StartsWith("Client v1.5 Connected to ")) {
+                    if (message.StartsWith("Client v1.6 Connected to ")) {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
 
                         if (remoteId.m_SteamID != steamID.m_SteamID) {
-                            SendPacket((ulong)remoteId.m_SteamID, $"Client v1.5 Connection confirmed with {steamID}");
+                            byte[] data = System.Text.Encoding.UTF8.GetBytes($"Client v1.6 Connection confirmed with {steamID}");
+                            SteamNetworking.SendP2PPacket(remoteId, data, (uint)data.Length, EP2PSend.k_EP2PSendReliable);
                         }
-                    } else if (message.StartsWith("Client v1.5 Connection confirmed with ")) {
+                    } else if (message.StartsWith("Client v1.6 Connection confirmed with ")) {
                         if (!connectedPlayers.Contains(remoteId))
                             connectedPlayers.Add(remoteId);
                     } else {
                         try {
                             ulong senderId;
+                            bool priority;
                             Vector3 pos;
                             string scene;
                             bool isAttack;
                             Quaternion attack;
-                            int atkBns;
+                            float atkBns;
                             bool isDashAttack;
                             string currentHat;
                             string dummyName;
-                            ParsePlayerUpdatePacket(recvBuffer, out senderId, out pos, out scene, out isAttack, out attack, out atkBns, out isDashAttack, out currentHat, out dummyName);
+                            ParsePlayerUpdatePacket(recvBuffer, out priority, out senderId, out pos, out currentHat, out scene, out dummyName, out isAttack, out attack, out atkBns, out isDashAttack);
                             GameObject dummy = GetPlayerDummy(senderId);
                             if (dummy != null)
-                                dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, scene, isAttack, attack, atkBns, isDashAttack, currentHat, dummyName);
+                                if (priority)
+                                    dummy.GetComponent<PlayerDummy>().UpdatePlayer(isAttack, attack, atkBns, isDashAttack);
+                                else
+                                    dummy.GetComponent<PlayerDummy>().UpdatePlayer(pos, currentHat, scene, dummyName);
                         } catch (Exception ex) {
                             MelonLogger.Error($"Failed to parse player update packet: {ex.Message}");
                         }
@@ -194,33 +188,18 @@ namespace GlyphsMultiplayer {
             }
         }
 
-        public static byte[] CreatePlayerUpdatePacket(CSteamID senderId, Vector3 position, string sceneName, bool isAttack, Quaternion attack, int atkBns, bool isDashAttack, string currentHat, string displayName) {
+        public static byte[] CreateLowPriorityPacket(CSteamID senderId, Vector3 position, string sceneName, string currentHat, string displayName) {
             using (var ms = new MemoryStream())
             using (var writer = new BinaryWriter(ms)) {
                 writer.Write(senderId.m_SteamID);
+                writer.Write(false);
+
                 writer.Write(position.x);
                 writer.Write(position.y);
-                writer.Write(position.z);
 
-                byte[] sceneBytes = Encoding.UTF8.GetBytes(sceneName);
-                writer.Write(sceneBytes.Length);
-                writer.Write(sceneBytes);
+                writer.Write(ParseHatName(currentHat));
 
-                writer.Write(isAttack);
-                if (isAttack) {
-                    writer.Write(attack.x);
-                    writer.Write(attack.y);
-                    writer.Write(attack.z);
-                    writer.Write(attack.w);
-                }
-
-                writer.Write(atkBns);
-
-                writer.Write(isDashAttack);
-
-                byte[] hatBytes = Encoding.UTF8.GetBytes(currentHat);
-                writer.Write(hatBytes.Length);
-                writer.Write(hatBytes);
+                writer.Write(ParseSceneName(sceneName));
 
                 byte[] nameBytes = Encoding.UTF8.GetBytes(displayName);
                 writer.Write(nameBytes.Length);
@@ -230,46 +209,151 @@ namespace GlyphsMultiplayer {
             }
         }
 
-        public static void ParsePlayerUpdatePacket(byte[] data, out ulong senderSteamId, out Vector3 position, out string sceneName, out bool isAttack, out Quaternion attack, out int atkBns, out bool isDashAttack, out string currentHat, out string dummyName) {
+        public static byte[] CreateHighPriorityPacket(CSteamID senderId, bool isAttack, Quaternion attack, float atkBns, bool isDashAttack) {
+            using (var ms = new MemoryStream())
+            using (var writer = new BinaryWriter(ms)) {
+                writer.Write(senderId.m_SteamID);
+                writer.Write(true);
+
+                writer.Write(isAttack);
+                if (isAttack)
+                    writer.Write(attack.z);
+                writer.Write(atkBns);
+
+                writer.Write(isDashAttack);
+
+                return ms.ToArray();
+            }
+        }
+
+        public static void ParsePlayerUpdatePacket(byte[] data, out bool priority, out ulong senderSteamId, out Vector3 position, out string currentHat, out string sceneName, out string dummyName, out bool isAttack, out Quaternion attack, out float atkBns, out bool isDashAttack) {
             using (var ms = new MemoryStream(data))
             using (var reader = new BinaryReader(ms)) {
                 senderSteamId = reader.ReadUInt64();
+                priority = reader.ReadBoolean();
 
-                float x = reader.ReadSingle();
-                float y = reader.ReadSingle();
-                float z = reader.ReadSingle();
-                position = new Vector3(x, y, z);
+                position = Vector3.zero;
+                currentHat = "";
+                sceneName = "";
+                dummyName = "";
+                isAttack = false;
+                attack = Quaternion.identity;
+                atkBns = 0f;
+                isDashAttack = false;
 
-                int sceneLen = reader.ReadInt32();
-                string scene = Encoding.UTF8.GetString(reader.ReadBytes(sceneLen));
-                sceneName = scene;
-
-                isAttack = reader.ReadBoolean();
-                if (isAttack) {
-                    float ax = reader.ReadSingle();
-                    float ay = reader.ReadSingle();
-                    float az = reader.ReadSingle();
-                    float aw = reader.ReadSingle();
-                    attack = new Quaternion(ax, ay, az, aw);
-                } else {
-                    attack = Quaternion.identity;
-                }
-
-                atkBns = (int)reader.ReadSingle();
-
-                isDashAttack = reader.ReadBoolean();
-
-                int hatLen = reader.ReadInt32();
-                if (hatLen > 0)
-                    currentHat = Encoding.UTF8.GetString(reader.ReadBytes(hatLen));
+                if (priority)
+                    ParsePriorityPacket(reader, out isAttack, out attack, out atkBns, out isDashAttack);
                 else
-                    currentHat = "";
+                    ParseGeneralPacket(reader, out position, out currentHat, out sceneName, out dummyName);
+            }
+        }
 
-                int nameLen = reader.ReadInt32();
-                if (nameLen > 0)
-                    dummyName = Encoding.UTF8.GetString(reader.ReadBytes(nameLen));
-                else
-                    dummyName = "George Appreciator";
+        private static void ParsePriorityPacket(BinaryReader reader, out bool isAttack, out Quaternion attack, out float atkBns, out bool isDashAttack) {
+            isAttack = reader.ReadBoolean();
+            if (isAttack) {
+                float angle = reader.ReadSingle();
+                attack = new Quaternion(0f, 0f, angle, 0f);
+            } else {
+                attack = Quaternion.identity;
+            }
+            atkBns = reader.ReadSingle();
+            isDashAttack = reader.ReadBoolean();
+        }
+
+        private static void ParseGeneralPacket(BinaryReader reader, out Vector3 position, out string currentHat, out string sceneName, out string dummyName) {
+            float x = reader.ReadSingle();
+            float y = reader.ReadSingle();
+            position = new Vector3(x, y, 0f);
+
+            currentHat = GetHatName(reader.ReadByte());
+
+            sceneName = GetSceneName(reader.ReadByte());
+
+            int nameLen = reader.ReadInt32();
+            if (nameLen > 0)
+                dummyName = Encoding.UTF8.GetString(reader.ReadBytes(nameLen));
+            else
+                dummyName = "George Appreciator";
+        }
+
+        private static byte ParseSceneName(string sceneName) {
+            switch (sceneName) {
+                case "Game":
+                    return 1;
+                case "Memory":
+                    return 2;
+                case "Outer Void":
+                    return 3;
+                default:
+                    return 0;
+            }
+        }
+
+        private static string GetSceneName(byte sceneId) {
+            switch (sceneId) {
+                case 1:
+                    return "Game";
+                case 2:
+                    return "Memory";
+                case 3:
+                    return "Outer Void";
+                default:
+                    return "Title/Cutscene";
+            }
+        }
+
+        // TODO: Check game for actual hat names
+        private static byte ParseHatName(string hatName) {
+            switch (hatName) {
+                case "Bow":
+                    return 1;
+                case "Propeller":
+                    return 2;
+                case "Traffic":
+                    return 3;
+                case "John":
+                    return 4;
+                case "Top":
+                    return 5;
+                case "Fez":
+                    return 6;
+                case "Party":
+                    return 7;
+                case "Bomb":
+                    return 8;
+                case "Crown":
+                    return 9;
+                case "Chicken":
+                    return 10;
+                default:
+                    return 0;
+            }
+        }
+
+        private static string GetHatName(byte hatId) {
+            switch (hatId) {
+                case 1:
+                    return "Bow";
+                case 2:
+                    return "Propeller";
+                case 3:
+                    return "Traffic";
+                case 4:
+                    return "John";
+                case 5:
+                    return "Top";
+                case 6:
+                    return "Fez";
+                case 7:
+                    return "Party";
+                case 8:
+                    return "Bomb";
+                case 9:
+                    return "Crown";
+                case 10:
+                    return "Chicken";
+                default:
+                    return "None";
             }
         }
 
@@ -285,12 +369,11 @@ namespace GlyphsMultiplayer {
         private Callback<P2PSessionRequest_t> sessionRequestCallback;
         public GameObject player;
         public bool steamInitialized = false;
-        private bool outgoing = false;
+        private float lastRequestTime = 0f;
         public List<GameObject> dummies = new List<GameObject>();
         public List<CSteamID> connectedPlayers = new List<CSteamID>();
         public CSteamID steamID = new CSteamID();
         public List<ulong> targetIDs = new List<ulong>();
-        public int packetDelay = 0;
         public bool isAttacking = false;
         public bool isDashAttack = false;
         public string hat = "";
