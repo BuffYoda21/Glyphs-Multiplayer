@@ -75,10 +75,8 @@ namespace GlyphsMultiplayer {
         }
 
         public void Update() {
-            if (player && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void"))
+            if (!player && (SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().name == "Memory" || SceneManager.GetActiveScene().name == "Outer Void"))
                 player = GameObject.Find("Player");
-            else
-                return;
             if (!steamInitialized && SteamManager.Initialized) {
                 steamID = SteamUser.GetSteamID();
                 MelonLogger.Msg($"Your Steam ID: {steamID}");
@@ -376,7 +374,6 @@ namespace GlyphsMultiplayer {
         public List<CSteamID> connectedPlayers = new List<CSteamID>();
         public CSteamID steamID = new CSteamID();
         public List<ulong> targetIDs = new List<ulong>();
-        public int packetDelay = 0;
         public bool isAttacking = false;
         public bool isDashAttack = false;
         public string hat = "";
